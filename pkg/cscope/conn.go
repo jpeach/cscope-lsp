@@ -85,6 +85,10 @@ func (c *Conn) Read() (*Query, error) {
 	}
 
 	str := c.scanner.Text()
+	if len(str) == 0 {
+		return nil, fmt.Errorf("unknown command '%s'", str)
+	}
+
 	n, err := strconv.Atoi(string(str[0]))
 	if err != nil {
 		return nil, fmt.Errorf("unknown command '%s'", str)
