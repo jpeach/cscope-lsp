@@ -137,3 +137,21 @@ type DidCloseTextDocumentParams struct {
 	// The document that was closed.
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
+
+// ReferenceContext ...
+type ReferenceContext struct {
+	// Include the declaration of the current symbol.
+	IncludeDeclaration bool `json:"includeDeclaration"`
+}
+
+// ReferenceParams is sent from the client to the server to resolve
+// project-wide references for the symbol denoted by the given text
+// document position.
+type ReferenceParams struct {
+	Context ReferenceContext `json:"context"`
+
+	// ReferenceParams extends TextDocumentPositionParam
+
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+	Position     Position               `json:"position"`
+}

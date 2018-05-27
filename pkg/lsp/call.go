@@ -100,6 +100,30 @@ func TextDocumentDefinition(s *Server, file string, line int, col int) ([]Locati
 	return loc, nil
 }
 
+// TextDocumentReferences ...
+func TextDocumentReferences(s *Server, file string, line int, col int) ([]Location, error) {
+	var loc []Location
+
+	ref := ReferenceParams{
+		Context: ReferenceContext{
+			IncludeDeclaration: false,
+		},
+		TextDocument: TextDocumentIdentifier{
+			URI: toURI(file),
+		},
+		Position: Position{
+			Line:      line,
+			Character: col,
+		},
+	}
+
+	if err := s.Call(context.Background(), "textDocument/references", ref, &loc); err != nil {
+		return nil, err
+	}
+
+	return loc, nil
+}
+
 // TextDocumentDidOpen ...
 func TextDocumentDidOpen(s *Server, path string, vers int) error {
 	u, err := url.Parse(path)

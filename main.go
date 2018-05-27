@@ -171,7 +171,22 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 
 	switch q.Search {
 	case cscope.FindSymbol:
-		return nil, fmt.Errorf("not implemented")
+		loc, err := lsp.TextDocumentReferences(s, file, line, col)
+		if err != nil {
+			return nil, err
+		}
+
+		results := make([]cscope.Result, 0, len(loc))
+		for _, l := range loc {
+			r, err := convertLocationToResult(&l)
+			if err != nil {
+				return nil, err
+			}
+
+			results = append(results, r)
+		}
+
+		return results, err
 
 	case cscope.FindDefinition:
 		loc, err := lsp.TextDocumentDefinition(s, file, line, col)
