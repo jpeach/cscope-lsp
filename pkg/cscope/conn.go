@@ -20,8 +20,8 @@ const (
 	// FindCallees - Find functions called by this function
 	FindCallees SearchType = 2
 
-	// FindReferences - Find references of this function
-	FindReferences SearchType = 3
+	// FindCallers - Find callers of this function
+	FindCallers SearchType = 3
 
 	// FindTextString Find this text string
 	FindTextString SearchType = 4
@@ -98,7 +98,7 @@ func (c *Conn) Read() (*Query, error) {
 	case FindSymbol:
 	case FindDefinition:
 	case FindCallees:
-	case FindReferences:
+	case FindCallers:
 	case FindTextString:
 	case FindEgrepPattern:
 	case FindFile:

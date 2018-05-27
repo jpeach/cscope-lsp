@@ -194,7 +194,7 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 	case cscope.FindCallees:
 		return nil, fmt.Errorf("not implemented")
 
-	case cscope.FindReferences:
+	case cscope.FindCallers:
 		return nil, fmt.Errorf("not implemented")
 
 	case cscope.FindTextString:
