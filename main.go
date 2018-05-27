@@ -112,27 +112,34 @@ func parseQueryPattern(spec string) (string, int, int, error) {
 	return file, line - 1, col - 1, nil
 }
 
-func convertLocationToResult(l *lsp.Location) (cscope.Result, error) {
-	uri, err := url.Parse(l.URI)
-	if err != nil {
-		return cscope.Result{}, err
+func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
+	results := make([]cscope.Result, 0, len(loc))
+
+	for _, l := range loc {
+
+		uri, err := url.Parse(l.URI)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO(jpeach): For Text, we can just read the first line of the
+		// position.
+
+		// TODO(jpeach): For Symbol, maybe read from the starting Position until
+		// the first whitespace?
+
+		// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
+		r := cscope.Result{
+			File:   uri.Path,
+			Line:   l.Range.Start.Line + 1,
+			Symbol: "-",
+			Text:   "-",
+		}
+
+		results = append(results, r)
 	}
 
-	// TODO(jpeach): For Text, we can just read the first line of the
-	// position.
-
-	// TODO(jpeach): For Symbol, maybe read from the starting Position until
-	// the first whitespace?
-
-	// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
-	r := cscope.Result{
-		File:   uri.Path,
-		Line:   l.Range.Start.Line + 1,
-		Symbol: "-",
-		Text:   "-",
-	}
-
-	return r, nil
+	return results, nil
 }
 
 func mtime(path string) (int, error) {
@@ -144,7 +151,7 @@ func mtime(path string) (int, error) {
 	return int(s.ModTime().Unix()), nil
 }
 
-func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
+func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 	file, line, col, err := parseQueryPattern(q.Pattern)
 
 	// Use the mtime as the file version since it will increment
@@ -169,17 +176,7 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			return nil, err
 		}
 
-		results := make([]cscope.Result, 0, len(loc))
-		for _, l := range loc {
-			r, err := convertLocationToResult(&l)
-			if err != nil {
-				return nil, err
-			}
-
-			results = append(results, r)
-		}
-
-		return results, err
+		return convertLocationsToResult(loc)
 
 	case cscope.FindDefinition:
 		loc, err := lsp.TextDocumentImplementation(s, file, line, col)
@@ -194,17 +191,7 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			}
 		}
 
-		results := make([]cscope.Result, 0, len(loc))
-		for _, l := range loc {
-			r, err := convertLocationToResult(&l)
-			if err != nil {
-				return nil, err
-			}
-
-			results = append(results, r)
-		}
-
-		return results, err
+		return convertLocationsToResult(loc)
 
 	case cscope.FindCallees:
 		return nil, fmt.Errorf("not implemented")
@@ -215,17 +202,7 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			return nil, err
 		}
 
-		results := make([]cscope.Result, 0, len(loc))
-		for _, l := range loc {
-			r, err := convertLocationToResult(&l)
-			if err != nil {
-				return nil, err
-			}
-
-			results = append(results, r)
-		}
-
-		return results, err
+		return convertLocationsToResult(loc)
 
 	case cscope.FindTextString:
 		return nil, fmt.Errorf("not implemented")
@@ -299,7 +276,7 @@ func main() {
 			continue
 		}
 
-		results, err := handle(srv, query)
+		results, err := search(srv, query)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
 		}
