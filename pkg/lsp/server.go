@@ -153,10 +153,8 @@ func (s *Server) Start(opts *ServerOpts) error {
 	}
 
 	go func() {
-		log.Printf("waiting for cmd")
 		s.cmd.Wait()
 
-		log.Printf("done waiting for cmd")
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
@@ -166,7 +164,6 @@ func (s *Server) Start(opts *ServerOpts) error {
 		// the caller should reinitialize it.
 	}()
 
-	log.Printf("started %s ...", s.cmd)
 	return nil
 }
 
