@@ -10,16 +10,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jpeach/cscope-cquery/pkg/cscope"
-	"github.com/jpeach/cscope-cquery/pkg/lsp"
-	"github.com/jpeach/cscope-cquery/pkg/lsp/cquery"
+	"github.com/jpeach/cscope-lsp/pkg/cscope"
+	"github.com/jpeach/cscope-lsp/pkg/lsp"
+	"github.com/jpeach/cscope-lsp/pkg/lsp/cquery"
 
 	"github.com/spf13/pflag"
 )
 
 const (
 	// PROGNAME is the program name used in error and log messages.
-	PROGNAME = "cscope-cquery"
+	PROGNAME = "cscope-lsp"
 )
 
 var (

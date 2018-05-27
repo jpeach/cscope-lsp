@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/jpeach/cscope-cquery/pkg/lsp/cquery"
+	"github.com/jpeach/cscope-lsp/pkg/lsp/cquery"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
