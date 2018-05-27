@@ -123,6 +123,28 @@ func TextDocumentImplementation(s *Server, file string, line int, col int) ([]Lo
 	return loc, nil
 }
 
+// TextDocumentTypeDefinition resolve the type definition location
+// of a symbol at a given text document position.
+func TextDocumentTypeDefinition(s *Server, file string, line int, col int) ([]Location, error) {
+	var loc []Location
+
+	pos := TextDocumentPositionParams{
+		TextDocument: TextDocumentIdentifier{
+			URI: FileToURI(file),
+		},
+		Position: Position{
+			Line:      line,
+			Character: col,
+		},
+	}
+
+	if err := s.Call(context.Background(), "textDocument/typeDefinition", pos, &loc); err != nil {
+		return nil, err
+	}
+
+	return loc, nil
+}
+
 // TextDocumentReferences ...
 func TextDocumentReferences(s *Server, file string, line int, col int) ([]Location, error) {
 	var loc []Location

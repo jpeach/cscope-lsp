@@ -191,6 +191,13 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			}
 		}
 
+		if len(loc) == 0 {
+			loc, err = lsp.TextDocumentTypeDefinition(s, file, line, col)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return convertLocationsToResult(loc)
 
 	case cscope.FindCallees:
