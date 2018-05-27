@@ -182,9 +182,16 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 		return results, err
 
 	case cscope.FindDefinition:
-		loc, err := lsp.TextDocumentDefinition(s, file, line, col)
+		loc, err := lsp.TextDocumentImplementation(s, file, line, col)
 		if err != nil {
 			return nil, err
+		}
+
+		if len(loc) == 0 {
+			loc, err = lsp.TextDocumentDefinition(s, file, line, col)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		results := make([]cscope.Result, 0, len(loc))

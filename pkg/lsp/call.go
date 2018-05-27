@@ -101,13 +101,35 @@ func TextDocumentDefinition(s *Server, file string, line int, col int) ([]Locati
 	return loc, nil
 }
 
+// TextDocumentImplementation resolves the implementation location
+// of a symbol at a given text document position.
+func TextDocumentImplementation(s *Server, file string, line int, col int) ([]Location, error) {
+	var loc []Location
+
+	pos := TextDocumentPositionParams{
+		TextDocument: TextDocumentIdentifier{
+			URI: FileToURI(file),
+		},
+		Position: Position{
+			Line:      line,
+			Character: col,
+		},
+	}
+
+	if err := s.Call(context.Background(), "textDocument/implementation", pos, &loc); err != nil {
+		return nil, err
+	}
+
+	return loc, nil
+}
+
 // TextDocumentReferences ...
 func TextDocumentReferences(s *Server, file string, line int, col int) ([]Location, error) {
 	var loc []Location
 
 	ref := ReferenceParams{
 		Context: ReferenceContext{
-			IncludeDeclaration: false,
+			IncludeDeclaration: true,
 		},
 		TextDocument: TextDocumentIdentifier{
 			URI: FileToURI(file),
