@@ -210,7 +210,22 @@ func handle(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 		return nil, fmt.Errorf("not implemented")
 
 	case cscope.FindCallers:
-		return nil, fmt.Errorf("not implemented")
+		loc, err := cquery.Callers(s, file, line, col)
+		if err != nil {
+			return nil, err
+		}
+
+		results := make([]cscope.Result, 0, len(loc))
+		for _, l := range loc {
+			r, err := convertLocationToResult(&l)
+			if err != nil {
+				return nil, err
+			}
+
+			results = append(results, r)
+		}
+
+		return results, err
 
 	case cscope.FindTextString:
 		return nil, fmt.Errorf("not implemented")

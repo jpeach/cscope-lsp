@@ -11,7 +11,8 @@ import (
 	"strings"
 )
 
-func toURI(path string) string {
+// FileToURI ...
+func FileToURI(path string) string {
 	// If this is already a URL, leave it alone.
 	if strings.HasPrefix(path, "file://") {
 		return path
@@ -85,7 +86,7 @@ func TextDocumentDefinition(s *Server, file string, line int, col int) ([]Locati
 
 	pos := TextDocumentPositionParams{
 		TextDocument: TextDocumentIdentifier{
-			URI: toURI(file),
+			URI: FileToURI(file),
 		},
 		Position: Position{
 			Line:      line,
@@ -109,7 +110,7 @@ func TextDocumentReferences(s *Server, file string, line int, col int) ([]Locati
 			IncludeDeclaration: false,
 		},
 		TextDocument: TextDocumentIdentifier{
-			URI: toURI(file),
+			URI: FileToURI(file),
 		},
 		Position: Position{
 			Line:      line,
@@ -139,7 +140,7 @@ func TextDocumentDidOpen(s *Server, path string, vers int) error {
 	params := DidOpenTextDocumentParams{
 		TextDocument: TextDocumentItem{
 			LanguageID: FileToLanguageID(path),
-			URI:        toURI(path),
+			URI:        FileToURI(path),
 			Version:    vers,
 			Text:       string(text),
 		},
@@ -152,7 +153,7 @@ func TextDocumentDidOpen(s *Server, path string, vers int) error {
 func TextDocumentDidClose(s *Server, path string) error {
 	params := DidCloseTextDocumentParams{
 		TextDocument: TextDocumentIdentifier{
-			URI: toURI(path),
+			URI: FileToURI(path),
 		},
 	}
 

@@ -2,15 +2,12 @@ package lsp
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"sync"
-
-	"github.com/jpeach/cscope-lsp/pkg/lsp/cquery"
 
 	"github.com/sourcegraph/jsonrpc2"
 )
@@ -36,12 +33,6 @@ type handler struct {
 
 func (h *handler) Handle(ctx context.Context, c *jsonrpc2.Conn, r *jsonrpc2.Request) {
 	switch r.Method {
-	case "$cquery/progress":
-		var p cquery.Progress
-		if err := json.Unmarshal(*r.Params, &p); err != nil {
-			log.Printf("failed to unmarshall %s message: %s",
-				r.Method, err)
-		}
 	default:
 		log.Printf("handler called for %s\n", r.Method)
 	}
