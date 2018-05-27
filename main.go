@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -58,13 +57,9 @@ func lspInit() (*lsp.Server, error) {
 		return nil, err
 	}
 
-	log.Printf("start")
 	err = srv.Start(&lsp.ServerOpts{
 		Path: *cqueryPath,
-		Args: []string{
-			"--log-all-to-stderr",
-			"--record=/tmp/cquery",
-		},
+		Args: []string{},
 	})
 
 	if err != nil {
@@ -85,12 +80,10 @@ func lspInit() (*lsp.Server, error) {
 		CacheDirectory: cache,
 	}
 
-	log.Printf("init")
 	if err := lsp.Initialize(srv, cwd, opts); err != nil {
 		return nil, err
 	}
 
-	log.Printf("done")
 	return srv, nil
 }
 
@@ -301,12 +294,11 @@ func main() {
 
 		results, err := handle(srv, query)
 		if err != nil {
-			conn.Out.Write([]byte(fmt.Sprintf("%s: %s\n", PROGNAME, err)))
-			continue
+			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
 		}
 
 		if err = conn.Write(results); err != nil {
-			conn.Out.Write([]byte(fmt.Sprintf("%s: %s\n", PROGNAME, err)))
+			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
 			os.Exit(1)
 		}
 	}
