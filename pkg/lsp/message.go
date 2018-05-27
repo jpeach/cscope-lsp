@@ -45,7 +45,7 @@ type InitializeParams struct {
 
 	// The rootUri of the workspace. Is null if no folder is open.
 	// If both `rootPath` and `rootUri` are set `rootUri` wins.
-	RootURI *string `json:"rootUri"`
+	RootURI string `json:"rootUri,omitempty"`
 
 	InitializationOptions interface{} `json:"initializationOptions"`
 
@@ -54,7 +54,7 @@ type InitializeParams struct {
 
 	// The initial trace setting. If omitted trace is disabled ('off').
 	//	trace?: 'off' | 'messages' | 'verbose';
-	Trace *string `json:"trace"`
+	Trace string `json:"trace,omitempty"`
 
 	// The workspace folders configured in the client when the
 	// server starts.  This property is only available if the
@@ -100,4 +100,40 @@ type TextDocumentIdentifier struct {
 type TextDocumentPositionParams struct {
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
+}
+
+// TextDocumentItem is item to transfer a text document from
+// the client to the server.
+type TextDocumentItem struct {
+	// The text document's URI.
+	URI string `json:"uri"`
+
+	// The text document's language identifier.
+	LanguageID string `json:"languageId"`
+
+	// The version number of this document (it will increase
+	// after each change, including undo/redo).
+	Version int `json:"version"`
+
+	// The content of the opened text document.
+	Text string `json:"text"`
+}
+
+// DidOpenTextDocumentParams is sent from the client to the server to
+// signal newly opened text documents. The document’s truth is now
+// managed by the client and the server must not try to read the
+// document’s truth using the document’s uri. Open in this sense
+// means it is managed by the client.
+type DidOpenTextDocumentParams struct {
+	// The document that was opened.
+	TextDocument TextDocumentItem `json:"textDocument"`
+}
+
+// DidCloseTextDocumentParams is sent from the client to the server when
+// the document got closed in the client. The document’s truth now
+// exists where the document’s uri points to (e.g. if the document’s
+// uri is a file uri the truth now exists on disk).
+type DidCloseTextDocumentParams struct {
+	// The document that was closed.
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
 }
