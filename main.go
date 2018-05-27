@@ -113,6 +113,7 @@ func parseQueryPattern(spec string) (string, int, int, error) {
 }
 
 func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
+	cwd, _ := os.Getwd()
 	results := make([]cscope.Result, 0, len(loc))
 
 	for _, l := range loc {
@@ -130,7 +131,7 @@ func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
 
 		// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
 		r := cscope.Result{
-			File:   uri.Path,
+			File:   strings.TrimPrefix(uri.Path, cwd+"/"),
 			Line:   l.Range.Start.Line + 1,
 			Symbol: "-",
 			Text:   "-",
