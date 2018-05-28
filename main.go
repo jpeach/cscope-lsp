@@ -112,8 +112,16 @@ func parseQueryPattern(spec string) (string, int, int, error) {
 	return file, line - 1, col - 1, nil
 }
 
-func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
-	cwd, _ := os.Getwd()
+func uriToPath(wd string, uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse URI '%s': %s", uri, err))
+	}
+
+	return strings.TrimPrefix(u.Path, wd+"/")
+}
+
+func convertLocationsToResult(wd string, loc []lsp.Location) ([]cscope.Result, error) {
 	results := make([]cscope.Result, 0, len(loc))
 
 	for _, l := range loc {
@@ -131,7 +139,7 @@ func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
 
 		// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
 		r := cscope.Result{
-			File:   strings.TrimPrefix(uri.Path, cwd+"/"),
+			File:   strings.TrimPrefix(uri.Path, wd+"/"),
 			Line:   l.Range.Start.Line + 1,
 			Symbol: "-",
 			Text:   "-",
@@ -141,6 +149,25 @@ func convertLocationsToResult(loc []lsp.Location) ([]cscope.Result, error) {
 	}
 
 	return results, nil
+}
+
+func convertCallsToResult(wd string, calls *cquery.CallHierarchy) ([]cscope.Result, error) {
+	results := make([]cscope.Result, 0, len(calls.Children))
+
+	for _, c := range calls.Children {
+		// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
+		r := cscope.Result{
+			File:   uriToPath(wd, c.Location.URI),
+			Line:   c.Location.Range.Start.Line + 1,
+			Symbol: "-",
+			Text:   c.Name,
+		}
+
+		results = append(results, r)
+	}
+
+	return results, nil
+
 }
 
 func mtime(path string) (int, error) {
@@ -153,6 +180,8 @@ func mtime(path string) (int, error) {
 }
 
 func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
+	wd, _ := os.Getwd()
+
 	file, line, col, err := parseQueryPattern(q.Pattern)
 
 	// Use the mtime as the file version since it will increment
@@ -177,7 +206,7 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			return nil, err
 		}
 
-		return convertLocationsToResult(loc)
+		return convertLocationsToResult(wd, loc)
 
 	case cscope.FindDefinition:
 		loc, err := lsp.TextDocumentImplementation(s, file, line, col)
@@ -199,18 +228,23 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			}
 		}
 
-		return convertLocationsToResult(loc)
+		return convertLocationsToResult(wd, loc)
 
 	case cscope.FindCallees:
-		return nil, fmt.Errorf("not implemented")
-
-	case cscope.FindCallers:
-		loc, err := cquery.Callers(s, file, line, col)
+		calls, err := cquery.CalleeHierarchy(s, file, line, col)
 		if err != nil {
 			return nil, err
 		}
 
-		return convertLocationsToResult(loc)
+		return convertCallsToResult(wd, calls)
+
+	case cscope.FindCallers:
+		calls, err := cquery.CallerHierarchy(s, file, line, col)
+		if err != nil {
+			return nil, err
+		}
+
+		return convertCallsToResult(wd, calls)
 
 	case cscope.FindTextString:
 		return nil, fmt.Errorf("not implemented")
