@@ -21,10 +21,14 @@ type ServerOpts struct {
 	Args []string
 }
 
+// ErrStopped is returned when a RPC method is called on a stopped Server.
+var ErrStopped = errors.New("stopped server")
+
 // NewServer ...
 func NewServer() (*Server, error) {
 	return &Server{
 		lock: &sync.Mutex{},
+		stop: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -60,6 +64,7 @@ func (r *rwc) Close() error {
 type Server struct {
 	cmd  *exec.Cmd
 	lock *sync.Mutex
+	stop chan struct{}
 
 	conn *jsonrpc2.Conn
 
@@ -151,6 +156,8 @@ func (s *Server) Start(opts *ServerOpts) error {
 
 		s.reset()
 
+		s.stop <- struct{}{}
+
 		// TODO(jpeach): Send a notification that the server died and
 		// the caller should reinitialize it.
 	}()
@@ -158,10 +165,28 @@ func (s *Server) Start(opts *ServerOpts) error {
 	return nil
 }
 
+// Stop ...
+func (s *Server) Stop() {
+	s.lock.Lock()
+
+	if s.cmd == nil {
+		s.lock.Unlock()
+		return
+	}
+
+	s.cmd.Process.Kill()
+	s.lock.Unlock()
+	<-s.stop
+}
+
 // Call ...
 func (s *Server) Call(ctx context.Context, method string, params interface{}, result interface{}) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	if s.cmd == nil {
+		return ErrStopped
+	}
 
 	return s.conn.Call(ctx, method, params, result)
 }
@@ -170,6 +195,10 @@ func (s *Server) Call(ctx context.Context, method string, params interface{}, re
 func (s *Server) Notify(ctx context.Context, method string, params interface{}) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	if s.cmd == nil {
+		return ErrStopped
+	}
 
 	return s.conn.Notify(context.Background(), method, &params)
 }

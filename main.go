@@ -298,12 +298,15 @@ func main() {
 	// to re-initialize it. This probably means that we need to drive the
 	// restart from the main loop here rather than automatically in the
 	// lsp.Server.
+
 	srv, err := lspInit()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: failed to start %s: %s\n",
 			PROGNAME, *cqueryPath, err)
 		os.Exit(1)
 	}
+
+	defer srv.Stop()
 
 	for *lineFlag {
 		conn.Prompt()
@@ -319,12 +322,34 @@ func main() {
 		}
 
 		results, err := search(srv, query)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
-		}
 
-		if err = conn.Write(results); err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
+		switch err {
+		case nil:
+			if err = conn.Write(results); err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
+				os.Exit(1)
+			}
+
+		// Unfortunately, if we just exit on any error, vim
+		// doesn't restart us, so if the LSP server stops for
+		// any reason, we just restart it. The user experience
+		// will be that one cscope search fails, but subsequent
+		// ones will succeed.
+		case lsp.ErrStopped:
+			if err = conn.Write(results); err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
+				os.Exit(1)
+			}
+
+			srv, err = lspInit()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s: failed to start %s: %s\n",
+					PROGNAME, *cqueryPath, err)
+				os.Exit(1)
+			}
+
+		default:
+			conn.Out.Write([]byte(fmt.Sprintf("%s: %s\n", PROGNAME, err)))
 			os.Exit(1)
 		}
 	}
