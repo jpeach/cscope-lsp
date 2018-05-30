@@ -2,6 +2,7 @@ package cscope
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -37,6 +38,10 @@ const (
 	// FindIncludingFiles - Find files #including this file
 	FindIncludingFiles SearchType = 8
 )
+
+// ErrQuit is a designated error returned when the Conn receives
+// a quit request.
+var ErrQuit = errors.New("quit")
 
 // Query is a cscope query.
 type Query struct {
@@ -87,6 +92,11 @@ func (c *Conn) Read() (*Query, error) {
 	str := c.scanner.Text()
 	if len(str) == 0 {
 		return nil, fmt.Errorf("unknown command '%s'", str)
+	}
+
+	// 'q' is the command to quit.
+	if str[0] == 'q' {
+		return nil, ErrQuit
 	}
 
 	n, err := strconv.Atoi(string(str[0]))

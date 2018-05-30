@@ -309,7 +309,7 @@ func main() {
 		conn.Prompt()
 
 		query, err := conn.Read()
-		if err == io.EOF {
+		if err == io.EOF || err == cscope.ErrQuit {
 			os.Exit(0)
 		}
 
