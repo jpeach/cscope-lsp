@@ -280,7 +280,7 @@ func main() {
 	}
 
 	if *traceFile != "" {
-		f, err := os.OpenFile(*traceFile, os.O_WRONLY|os.O_CREATE, 0644)
+		f, err := os.OpenFile(*traceFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
 			os.Exit(1)
