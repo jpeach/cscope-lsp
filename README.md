@@ -7,7 +7,7 @@ cscope line interface for a [Language Server](https://langserver.org).
 To use `cscope-lsp` in your vim session, you need to do a bit of
 configuration:
 
-```
+```vim
 " Return the current cursor position as "file:line:col"
 function! s:position()
     return expand('%') . ':' . line('.') . ':' . col('.')
