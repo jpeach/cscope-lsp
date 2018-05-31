@@ -102,6 +102,11 @@ type TextDocumentPositionParams struct {
 	Position     Position               `json:"position"`
 }
 
+// DocumentSymbolParams ...
+type DocumentSymbolParams struct {
+	TextDocument TextDocumentIdentifier `json:"textDocument"`
+}
+
 // TextDocumentItem is item to transfer a text document from
 // the client to the server.
 type TextDocumentItem struct {

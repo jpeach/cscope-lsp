@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -202,4 +203,23 @@ func TextDocumentDidClose(s *Server, path string) error {
 	}
 
 	return s.Notify(context.Background(), "textDocument/didClose", &params)
+}
+
+// TextDocumentDocumentSymbol ...
+func TextDocumentDocumentSymbol(s *Server, path string) error {
+	params := DocumentSymbolParams{
+		TextDocument: TextDocumentIdentifier{
+			URI: FileToURI(path),
+		},
+	}
+
+	var out json.RawMessage
+	if err := s.Call(context.Background(), "textDocument/documentSymbol", &params, &out); err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	json.Indent(&buf, out, "=", "\t")
+	buf.WriteTo(os.Stdout)
+	return nil
 }
