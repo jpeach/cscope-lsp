@@ -12,6 +12,7 @@ import (
 	"github.com/jpeach/cscope-lsp/pkg/cscope"
 	"github.com/jpeach/cscope-lsp/pkg/lsp"
 	"github.com/jpeach/cscope-lsp/pkg/lsp/cquery"
+	"golang.org/x/sys/unix"
 
 	"github.com/spf13/pflag"
 )
@@ -125,12 +126,6 @@ func convertLocationsToResult(wd string, loc []lsp.Location) ([]cscope.Result, e
 	results := make([]cscope.Result, 0, len(loc))
 
 	for _, l := range loc {
-
-		uri, err := url.Parse(l.URI)
-		if err != nil {
-			return nil, err
-		}
-
 		// TODO(jpeach): For Text, we can just read the first line of the
 		// position.
 
@@ -139,7 +134,7 @@ func convertLocationsToResult(wd string, loc []lsp.Location) ([]cscope.Result, e
 
 		// NOTE: We convert LSP 0-based lines back to Vim 1-based lines.
 		r := cscope.Result{
-			File:   strings.TrimPrefix(uri.Path, wd+"/"),
+			File:   uriToPath(wd, l.URI),
 			Line:   l.Range.Start.Line + 1,
 			Symbol: "-",
 			Text:   "-",
@@ -168,6 +163,44 @@ func convertCallsToResult(wd string, calls *cquery.CallHierarchy) ([]cscope.Resu
 
 	return results, nil
 
+}
+
+func resolveTextForResults(results []cscope.Result) error {
+	// Map of file path to all the lines in that file.
+	lines := map[string][]string{}
+
+	for _, r := range results {
+		lines[r.File] = make([]string, 0)
+	}
+
+	for f := range lines {
+		fd, err := unix.Open(f, unix.O_RDONLY, 0)
+		if err != nil {
+			return fmt.Errorf("failed to open %s: %s", f, err)
+		}
+
+		var s unix.Stat_t
+		unix.Fstat(fd, &s)
+
+		// TODO(jpeach): on Linux use unix.MAP_POPULATE to trigger
+		// readahead.
+		ptr, err := unix.Mmap(fd, 0, int(s.Size), unix.PROT_READ, unix.MAP_FILE)
+		if err != nil {
+			return fmt.Errorf("failed to mmap %s: %s", f, err)
+		}
+
+		// TODO(jpeach): convert ptr to string without copying ...
+		lines[f] = strings.Split(string(ptr), "\n")
+
+		defer unix.Munmap(ptr)
+		defer unix.Close(fd)
+	}
+
+	for i, r := range results {
+		results[i].Text = lines[r.File][r.Line-1]
+	}
+
+	return nil
 }
 
 func mtime(path string) (int, error) {
@@ -206,7 +239,16 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			return nil, err
 		}
 
-		return convertLocationsToResult(wd, loc)
+		r, err := convertLocationsToResult(wd, loc)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = resolveTextForResults(r); err != nil {
+			return nil, err
+		}
+
+		return r, nil
 
 	case cscope.FindDefinition:
 		loc, err := lsp.TextDocumentImplementation(s, file, line, col)
@@ -228,7 +270,16 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 			}
 		}
 
-		return convertLocationsToResult(wd, loc)
+		r, err := convertLocationsToResult(wd, loc)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = resolveTextForResults(r); err != nil {
+			return nil, err
+		}
+
+		return r, nil
 
 	case cscope.FindCallees:
 		calls, err := cquery.CalleeHierarchy(s, file, line, col)
