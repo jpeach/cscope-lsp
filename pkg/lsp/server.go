@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"sync"
@@ -38,7 +37,6 @@ type handler struct {
 func (h *handler) Handle(ctx context.Context, c *jsonrpc2.Conn, r *jsonrpc2.Request) {
 	switch r.Method {
 	default:
-		log.Printf("handler called for %s\n", r.Method)
 	}
 }
 
