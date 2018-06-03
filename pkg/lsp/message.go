@@ -82,6 +82,27 @@ type Range struct {
 	End   Position `json:"end"`
 }
 
+// LineCount returns the length of the range in lines.
+func (r Range) LineCount() int {
+	return r.End.Line - r.Start.Line
+}
+
+// Contains returns true if sub is fully contained by this range.
+func (r Range) Contains(sub Range) bool {
+	return r.Start.Line <= sub.Start.Line &&
+		r.End.Line >= sub.End.Line
+}
+
+// After ...
+func (r Range) After(r2 Range) bool {
+	return r.Start.Line >= r2.Start.Line
+}
+
+// Before ...
+func (r Range) Before(r2 Range) bool {
+	return !r.After(r2)
+}
+
 // Location represents a location inside a resource, such as a
 // line inside a text file.
 type Location struct {
@@ -159,4 +180,67 @@ type ReferenceParams struct {
 
 	TextDocument TextDocumentIdentifier `json:"textDocument"`
 	Position     Position               `json:"position"`
+}
+
+type SymbolKind int
+
+const (
+	SymbolKindFile          SymbolKind = 1
+	SymbolKindModule        SymbolKind = 2
+	SymbolKindNamespace     SymbolKind = 3
+	SymbolKindPackage       SymbolKind = 4
+	SymbolKindClass         SymbolKind = 5
+	SymbolKindMethod        SymbolKind = 6
+	SymbolKindProperty      SymbolKind = 7
+	SymbolKindField         SymbolKind = 8
+	SymbolKindConstructor   SymbolKind = 9
+	SymbolKindEnum          SymbolKind = 10
+	SymbolKindInterface     SymbolKind = 11
+	SymbolKindFunction      SymbolKind = 12
+	SymbolKindVariable      SymbolKind = 13
+	SymbolKindConstant      SymbolKind = 14
+	SymbolKindString        SymbolKind = 15
+	SymbolKindNumber        SymbolKind = 16
+	SymbolKindBoolean       SymbolKind = 17
+	SymbolKindArray         SymbolKind = 18
+	SymbolKindObject        SymbolKind = 19
+	SymbolKindKey           SymbolKind = 20
+	SymbolKindNull          SymbolKind = 21
+	SymbolKindEnumMember    SymbolKind = 22
+	SymbolKindStruct        SymbolKind = 23
+	SymbolKindEvent         SymbolKind = 24
+	SymbolKindOperator      SymbolKind = 25
+	SymbolKindTypeParameter SymbolKind = 26
+)
+
+// SymbolInformation represents information about programming constructs
+// like variables, classes,
+type SymbolInformation struct {
+	// Name is the name of this symbol.
+	Name string `json:"name"`
+
+	// Kind is the kind of this symbol.
+	Kind int `json:"kind"`
+
+	// Deprecated indicates if this symbol is deprecated.
+	Deprecated bool `json:"deprecated, omitempty"`
+
+	// Location is the location of this symbol. The location's
+	// range is used by a tool to reveal the location in the
+	// editor. If the symbol is selected in the tool the range's
+	// start information is used to position the cursor. So the
+	// range usually spans more then the actual symbol's name and
+	// does normally include things like visibility modifiers.
+	//
+	// The range doesn't have to denote a node range in the sense
+	// of a abstract syntax tree. It can therefore not be used
+	// to re-construct a hierarchy of the symbols.
+	Location Location `json:"location"`
+
+	// ContainerName is the name of the symbol containing this
+	// symbol. This information is for user interface purposes
+	// (e.g. to render a qualifier in the user interface if
+	// necessary). It can't be used to re-infer a hierarchy for
+	// the document symbols.
+	ContainerName *string `json:"containerName, omitempty"`
 }

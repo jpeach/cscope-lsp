@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -165,7 +167,100 @@ func convertCallsToResult(wd string, calls *cquery.CallHierarchy) ([]cscope.Resu
 
 }
 
+func resolveContainerForLocation(s *lsp.Server, results []cscope.Result, loc []lsp.Location) error {
+	// Map of file path to all the symbols in that file.
+	syms := map[string][]lsp.SymbolInformation{}
+
+	// First, fetch the symbols for each file.
+	for _, l := range loc {
+		if _, ok := syms[l.URI]; ok {
+			continue
+		}
+
+		sym, err := lsp.TextDocumentDocumentSymbol(s, l.URI)
+		if err != nil {
+			return err
+		}
+
+		// Make sure the symbols are sorted by their start position.
+		sort.Slice(sym, func(i, j int) bool {
+			return sym[i].Location.Range.Start.Line < sym[j].Location.Range.Start.Line
+		})
+
+		syms[l.URI] = sym
+	}
+
+	// Capture a function name from a string of the form
+	//"type function(args)".
+	matchFunctionName := regexp.MustCompile(`\s([^(\s]+)\s?\(`)
+
+	for i, l := range loc {
+
+		var best *lsp.SymbolInformation
+
+		// TODO(jpeach): use a binary search ...
+		for i, sym := range syms[l.URI] {
+			if sym.Location.Range.After(l.Range) {
+				// We sorted by start position, so
+				// now we have gone too far.
+				break
+			}
+
+			if !sym.Location.Range.Contains(l.Range) {
+				continue
+			}
+
+			if best == nil {
+				best = &syms[l.URI][i]
+				continue
+			}
+
+			// Take this as the best symbol if it is shorter than
+			// the one we have, since the shortest enclosing rance
+			// must be the most nested scope.
+			if sym.Location.Range.LineCount() < best.Location.Range.LineCount() {
+				best = &syms[l.URI][i]
+			}
+
+		}
+
+		if best != nil {
+			if best.ContainerName == nil {
+				results[i].Symbol = best.Name
+				continue
+			}
+
+			// If we have a ContainerName, we can use that to
+			// improve the Symbol. cquery uses ContainerName to
+			// report the expanded name for the symbol (i.e. not
+			// actually the container that encloses the symbol).
+			results[i].Symbol = best.Name
+
+			switch lsp.SymbolKind(best.Kind) {
+			case lsp.SymbolKindMethod, lsp.SymbolKindFunction:
+				n := matchFunctionName.FindStringSubmatch(*best.ContainerName)
+				if len(n) == 2 {
+					// n[0] is the entire matched string, n[1]
+					// is the first captured group.
+					results[i].Symbol = n[1]
+				}
+			default:
+				// If there's no whitespace in the container name,
+				// we can take the whole thing without breaking the
+				// cscope protocol.
+				f := strings.Fields(*best.ContainerName)
+				if len(f) == 1 {
+					results[i].Symbol = *best.ContainerName
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func resolveTextForResults(results []cscope.Result) error {
+
 	// Map of file path to all the lines in that file.
 	lines := map[string][]string{}
 
@@ -245,6 +340,10 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 		}
 
 		if err = resolveTextForResults(r); err != nil {
+			return nil, err
+		}
+
+		if err = resolveContainerForLocation(s, r, loc); err != nil {
 			return nil, err
 		}
 
