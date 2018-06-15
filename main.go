@@ -499,8 +499,11 @@ func main() {
 			}
 
 		default:
-			conn.Out.Write([]byte(fmt.Sprintf("%s: %s\n", PROGNAME, err)))
-			os.Exit(1)
+			// If we get an error from the LSP server, we can show
+			// it on stderr, but we still have to emit an empty cscope
+			// result so that vim will complete the cscope query.
+			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
+			conn.Write([]cscope.Result{})
 		}
 	}
 }
