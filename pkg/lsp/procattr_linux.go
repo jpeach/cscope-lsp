@@ -2,14 +2,10 @@
 
 package lsp
 
-import (
-	"os"
-	"syscall"
-)
+import "syscall"
 
 func procattr() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{
-		Pdeathsig: os.SIGKILL,
+		Pdeathsig: syscall.SIGKILL,
 	}
-
 }
