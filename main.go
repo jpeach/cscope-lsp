@@ -279,7 +279,7 @@ func resolveTextForResults(results []cscope.Result) error {
 
 		// TODO(jpeach): on Linux use unix.MAP_POPULATE to trigger
 		// readahead.
-		ptr, err := unix.Mmap(fd, 0, int(s.Size), unix.PROT_READ, unix.MAP_FILE)
+		ptr, err := unix.Mmap(fd, 0, int(s.Size), unix.PROT_READ, unix.MAP_FILE|unix.MAP_SHARED)
 		if err != nil {
 			return fmt.Errorf("failed to mmap %s: %s", f, err)
 		}
