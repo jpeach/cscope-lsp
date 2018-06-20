@@ -96,13 +96,7 @@ func (s *Server) start(path string, args []string) error {
 
 	s.cmd = exec.Command(path, args...)
 	s.cmd.Stderr = os.Stderr
-
-	// TODO(jpeach): Set up the child death sig on Linux.
-	/*
-		s.cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: os.SIGKILL,
-		}
-	*/
+	s.cmd.SysProcAttr = procattr()
 
 	s.in, err = s.cmd.StdinPipe()
 	if err != nil {
