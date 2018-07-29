@@ -11,13 +11,40 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// ServerOpts ...
-type ServerOpts struct {
+type srvOpts struct {
 	// Path to the LSP server executable.
-	Path string
+	path string
 
 	// Args are additional arguments passed to the LSP server at launch.
-	Args []string
+	args []string
+
+	traceEnabled bool
+	traceWriter  io.Writer
+}
+
+// ServerOption is a startup option for the LDP server.
+type ServerOption func(*srvOpts)
+
+// OptPath sets the path to the LSP server executable.
+func OptPath(path string) ServerOption {
+	return func(s *srvOpts) {
+		s.path = path
+	}
+}
+
+// OptArgs sets additional arguments passed to the LSP server.
+func OptArgs(args []string) ServerOption {
+	return func(s *srvOpts) {
+		s.args = args
+	}
+}
+
+// OptTrace enables message tracing to the given io.Writer.
+func OptTrace(out io.Writer) ServerOption {
+	return func(s *srvOpts) {
+		s.traceEnabled = true
+		s.traceWriter = out
+	}
 }
 
 // ErrStopped is returned when a RPC method is called on a stopped Server.
@@ -40,24 +67,6 @@ func (h *handler) Handle(ctx context.Context, c *jsonrpc2.Conn, r *jsonrpc2.Requ
 	}
 }
 
-type rwc struct {
-	stdin  io.WriteCloser
-	stdout io.ReadCloser
-}
-
-func (r *rwc) Read(p []byte) (int, error) {
-	return r.stdout.Read(p)
-}
-
-func (r *rwc) Write(p []byte) (int, error) {
-	return r.stdin.Write(p)
-}
-
-func (r *rwc) Close() error {
-	// Don't close, because really the Server owns these files.
-	return nil
-}
-
 // Server is an instance of a LSP server process.
 type Server struct {
 	cmd  *exec.Cmd
@@ -72,8 +81,8 @@ type Server struct {
 
 func (s *Server) rwc() *rwc {
 	return &rwc{
-		stdin:  s.in,
-		stdout: s.out,
+		write: s.in,
+		read:  s.out,
 	}
 }
 
@@ -91,7 +100,7 @@ func (s *Server) reset() {
 	s.cmd = nil
 }
 
-func (s *Server) start(path string, args []string) error {
+func (s *Server) start(path string, args []string, trace io.Writer) error {
 	var err error
 
 	s.cmd = exec.Command(path, args...)
@@ -116,11 +125,19 @@ func (s *Server) start(path string, args []string) error {
 		return err
 	}
 
+	var conn io.ReadWriteCloser
+
+	if trace != nil {
+		conn = s.rwc().Tee(trace)
+	} else {
+		conn = s.rwc()
+	}
+
 	rpcOpt := []jsonrpc2.ConnOpt{}
 
 	s.conn = jsonrpc2.NewConn(
 		context.Background(),
-		jsonrpc2.NewBufferedStream(s.rwc(), jsonrpc2.VSCodeObjectCodec{}),
+		jsonrpc2.NewBufferedStream(conn, jsonrpc2.VSCodeObjectCodec{}),
 		&handler{},
 		rpcOpt...)
 
@@ -128,7 +145,13 @@ func (s *Server) start(path string, args []string) error {
 }
 
 // Start ...
-func (s *Server) Start(opts *ServerOpts) error {
+func (s *Server) Start(opts []ServerOption) error {
+	options := srvOpts{}
+
+	for _, o := range opts {
+		o(&options)
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -136,8 +159,15 @@ func (s *Server) Start(opts *ServerOpts) error {
 		return errors.New("server already running")
 	}
 
-	if err := s.start(opts.Path, opts.Args); err != nil {
-		return err
+	if options.traceEnabled {
+		if err := s.start(options.path, options.args, options.traceWriter); err != nil {
+			return err
+		}
+	} else {
+
+		if err := s.start(options.path, options.args, nil); err != nil {
+			return err
+		}
 	}
 
 	go func() {

@@ -48,3 +48,12 @@ if has("cscope")
 
 endif
 ```
+
+It can be hard to understand the interaction between `cscope-lsp`
+and [cquery](https://github.com/cquery-project/cquery), but trace
+mode can be helpful here. To enable tracing, add the `--trace`
+option to the `cscope-lsp` argument, like this:
+
+```vim
+:execute ':cs add compile_commands.json . --trace=/tmp/cscope.trace'
+```

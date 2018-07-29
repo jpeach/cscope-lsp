@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	traceFile  = pflag.StringP("trace", "t", "", "Trace to the given file")
+	traceFile  = pflag.StringP("trace", "t", "", "Trace cscope and LSP messages to the given file")
 	cqueryPath = pflag.StringP("cquery", "c", "cquery", "Path to the cquery binary")
 	helpFlag   = pflag.BoolP("help", "h", false, "Print this help message")
 
@@ -38,35 +38,15 @@ var (
 	prependPath = pflag.StringP("prepend", "P", "", "Prepend path to relative file names in pre-built cross-ref file")
 )
 
-type tracer struct {
-	file io.Writer
-}
-
-func (t *tracer) Read(p []byte) (int, error) {
-	n, err := os.Stdin.Read(p)
-	t.file.Write(p[:n])
-	return n, err
-}
-
-func (t *tracer) Write(p []byte) (int, error) {
-	t.file.Write(p)
-	return os.Stdout.Write(p)
-}
-
-func lspInit() (*lsp.Server, error) {
+func lspInit(opts []lsp.ServerOption) (*lsp.Server, error) {
 	srv, err := lsp.NewServer()
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = srv.Start(&lsp.ServerOpts{
-		Path: *cqueryPath,
-		Args: []string{},
-	})
-
-	if err != nil {
-		return nil, err
+	if err = srv.Start(opts); err != nil {
+		return nil, fmt.Errorf("failed to start LSP server: %s", err)
 	}
 
 	cwd, err := os.Getwd()
@@ -79,12 +59,12 @@ func lspInit() (*lsp.Server, error) {
 		return nil, err
 	}
 
-	opts := cquery.InitializationOptions{
+	init := cquery.InitializationOptions{
 		CacheDirectory: cache,
 	}
 
-	if err := lsp.Initialize(srv, cwd, opts); err != nil {
-		return nil, err
+	if err := lsp.Initialize(srv, cwd, init); err != nil {
+		return nil, fmt.Errorf("LSP initialization failed: %s", err)
 	}
 
 	return srv, nil
@@ -429,27 +409,39 @@ func main() {
 		Out: os.Stdout,
 	}
 
+	lspOpts := []lsp.ServerOption{
+		lsp.OptPath(*cqueryPath),
+	}
+
 	if *traceFile != "" {
-		f, err := os.OpenFile(*traceFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0644)
+		traceFd, err := os.OpenFile(*traceFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", PROGNAME, err)
 			os.Exit(1)
 		}
 
+		defer traceFd.Close()
+
 		conn = cscope.Conn{
-			In:  &tracer{f},
-			Out: &tracer{f},
+			In:  io.TeeReader(os.Stdin, traceFd),
+			Out: io.MultiWriter(os.Stdout, traceFd),
 		}
 
-		defer f.Close()
+		os.Stderr = traceFd
+
+		lspOpts = append(lspOpts,
+			lsp.OptTrace(traceFd),
+			lsp.OptArgs([]string{
+				"--log-all-to-stderr",
+			}),
+		)
 	}
 
 	// TODO(jpeach): If we need to restart the LSP server, we also need
 	// to re-initialize it. This probably means that we need to drive the
 	// restart from the main loop here rather than automatically in the
 	// lsp.Server.
-
-	srv, err := lspInit()
+	srv, err := lspInit(lspOpts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: failed to start %s: %s\n",
 			PROGNAME, *cqueryPath, err)
@@ -491,7 +483,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			srv, err = lspInit()
+			srv, err = lspInit(lspOpts)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%s: failed to start %s: %s\n",
 					PROGNAME, *cqueryPath, err)
