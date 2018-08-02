@@ -25,9 +25,11 @@ const (
 )
 
 var (
-	traceFile  = pflag.StringP("trace", "t", "", "Trace cscope and LSP messages to the given file")
 	cqueryPath = pflag.StringP("cquery", "c", "cquery", "Path to the cquery binary")
+	debugLsp   = pflag.Bool("debug-lsp", false, "Enable cquery debug output")
 	helpFlag   = pflag.BoolP("help", "h", false, "Print this help message")
+	traceFile  = pflag.String("trace", "", "Trace cscope messages to the given file")
+	traceLsp   = pflag.Bool("trace-lsp", false, "Trace LSP messages to the trace file")
 
 	// The following flags are require for cscope compatibility. Vim will
 	// set them when starting up the line-oriented interface, but we only
@@ -429,8 +431,15 @@ func main() {
 
 		os.Stderr = traceFd
 
+		if *traceLsp {
+			lspOpts = append(lspOpts,
+				lsp.OptTrace(traceFd),
+			)
+		}
+	}
+
+	if *debugLsp {
 		lspOpts = append(lspOpts,
-			lsp.OptTrace(traceFd),
 			lsp.OptArgs([]string{
 				"--log-all-to-stderr",
 			}),
