@@ -46,28 +46,30 @@ func FileToLanguageID(path string) string {
 }
 
 // Initialize ...
-func Initialize(s *Server, root string, options interface{}) error {
+func Initialize(s *Server, path string, options interface{}) error {
 	var res json.RawMessage
 
-	if !filepath.IsAbs(root) {
-		abs, err := filepath.Abs(root)
+	if !filepath.IsAbs(path) {
+		abs, err := filepath.Abs(path)
 		if err != nil {
 			return err
 		}
 
-		root = abs
+		path = abs
 	}
+
+	pathURL := fmt.Sprintf("file://%s", path)
 
 	err := s.Call(
 		context.Background(),
 		"initialize",
 		&InitializeParams{
 			ProcessID: os.Getpid(),
-			RootURI:   root,
+			RootURI:   pathURL,
 			Trace:     TraceMessages,
 			WorkspaceFolders: []WorkspaceFolder{
 				{
-					URI: root,
+					URI: pathURL,
 				},
 			},
 			InitializationOptions: options,
