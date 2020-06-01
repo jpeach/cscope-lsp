@@ -25,13 +25,13 @@ const (
 )
 
 var (
-	cqueryPath = pflag.StringP("cquery", "c", "cquery", "Path to the cquery binary")
+	cqueryPath = pflag.StringP("cquery", "c", "clangd", "Path to the cquery binary")
 	debugLsp   = pflag.Bool("debug-lsp", false, "Enable cquery debug output")
 	helpFlag   = pflag.BoolP("help", "h", false, "Print this help message")
-	traceFile  = pflag.String("trace", "", "Trace cscope messages to the given file")
-	traceLsp   = pflag.Bool("trace-lsp", false, "Trace LSP messages to the trace file")
+	traceFile  = pflag.String("trace", "/tmp/cscope.trace", "Trace cscope messages to the given file")
+	traceLsp   = pflag.Bool("trace-lsp", true, "Trace LSP messages to the trace file")
 
-	// The following flags are require for cscope compatibility. Vim will
+	// The following flags are required for cscope compatibility. Vim will
 	// set them when starting up the line-oriented interface, but we only
 	// actually use `lineFlag`.
 	lineFlag    = pflag.BoolP("line", "l", false, "Enter cscope line oriented interface")
