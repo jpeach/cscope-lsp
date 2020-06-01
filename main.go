@@ -5,18 +5,20 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/jpeach/cscope-lsp/pkg/ccls"
 	"github.com/jpeach/cscope-lsp/pkg/cquery"
 	"github.com/jpeach/cscope-lsp/pkg/cscope"
 	"github.com/jpeach/cscope-lsp/pkg/lsp"
-	"golang.org/x/sys/unix"
 
 	"github.com/spf13/pflag"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -56,13 +58,20 @@ func lspInit(opts []lsp.ServerOption) (*lsp.Server, error) {
 		return nil, err
 	}
 
-	cache, err := filepath.Abs(".cache")
-	if err != nil {
-		return nil, err
-	}
+	var init interface{}
 
-	init := cquery.InitializationOptions{
-		CacheDirectory: cache,
+	if strings.Contains(*cqueryPath, "ccls") {
+		init = ccls.InitializationOptions{
+			Cache: ccls.CacheOptions{
+				Directory:        path.Join(cwd, ".ccls"),
+				HierarchicalPath: true,
+				Format:           "binary",
+			},
+		}
+	} else if strings.Contains(*cqueryPath, "cquery") {
+		init = cquery.InitializationOptions{
+			CacheDirectory: path.Join(cwd, ".cquery"),
+		}
 	}
 
 	if err := lsp.Initialize(srv, cwd, init); err != nil {
