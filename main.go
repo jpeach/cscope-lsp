@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jpeach/cscope-lsp/pkg/cquery"
 	"github.com/jpeach/cscope-lsp/pkg/cscope"
 	"github.com/jpeach/cscope-lsp/pkg/lsp"
-	"github.com/jpeach/cscope-lsp/pkg/lsp/cquery"
 	"golang.org/x/sys/unix"
 
 	"github.com/spf13/pflag"
@@ -34,10 +34,10 @@ var (
 	// The following flags are required for cscope compatibility. Vim will
 	// set them when starting up the line-oriented interface, but we only
 	// actually use `lineFlag`.
-	lineFlag    = pflag.BoolP("line", "l", false, "Enter cscope line oriented interface")
-	dFlags      = pflag.BoolP("noxref", "d", false, "Do not update the cross-reference")
-	refFile     = pflag.StringP("reffile", "f", "", "Use reffile as cross-ref file name instead of cscope.out")
-	prependPath = pflag.StringP("prepend", "P", "", "Prepend path to relative file names in pre-built cross-ref file")
+	lineFlag = pflag.BoolP("line", "l", false, "Enter cscope line oriented interface")
+	_        = pflag.BoolP("noxref", "d", false, "Do not update the cross-reference (*)")
+	_        = pflag.StringP("reffile", "f", "", "Use reffile as cross-ref file name instead of cscope.out (*)")
+	_        = pflag.StringP("prepend", "P", "", "Prepend path to relative file names in pre-built cross-ref file (*)")
 )
 
 func lspInit(opts []lsp.ServerOption) (*lsp.Server, error) {
