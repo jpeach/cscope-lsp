@@ -251,7 +251,6 @@ func resolveContainerForLocation(s *lsp.Server, results []cscope.Result, loc []l
 }
 
 func resolveTextForResults(results []cscope.Result) error {
-
 	// Map of file path to all the lines in that file.
 	lines := map[string][]string{}
 
@@ -402,7 +401,6 @@ func search(s *lsp.Server, q *cscope.Query) ([]cscope.Result, error) {
 	default:
 		return nil, fmt.Errorf("invalid cscope search type '%d'", q.Search)
 	}
-
 }
 
 func main() {
